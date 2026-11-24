@@ -1,0 +1,23 @@
+{
+  "name": "note-taking-app-backend",
+  "version": "1.0.0",
+  "description": "Secure note-taking REST API: Express, MongoDB/Mongoose, JWT, role-based access",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "node --watch --env-file=.env src/server.js",
+    "start": "node --env-file-if-exists=.env src/server.js",
+    "seed": "node --env-file=.env scripts/seed.js",
+    "explain": "node --env-file=.env scripts/explain.js"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "express": "^5.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.13.0"
+  }
+}
