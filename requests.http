@@ -1,0 +1,153 @@
+# Ready-made API calls for the VS Code "REST Client" extension.
+# Click "Send Request" above each block. Start the server first: npm run dev
+
+@base = http://localhost:3000/api
+
+### Health check
+GET {{base}}/health
+
+### Register
+POST {{base}}/auth/register
+Content-Type: application/json
+
+{ "name": "Alice", "email": "alice@example.com", "password": "password123", "interests": ["Chess", "reading"] }
+
+### Login (named, so later requests can reuse its token)
+# @name login
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{ "email": "alice@example.com", "password": "password123" }
+
+### Login with a wrong password -> 401
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{ "email": "alice@example.com", "password": "wrong-password" }
+
+### NoSQL injection attempt -> 400
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{ "email": { "$ne": null }, "password": "x" }
+
+### My profile (uses the token from the "login" request above)
+GET {{base}}/users/me
+Authorization: Bearer {{login.response.body.$.token}}
+
+### My profile without a token -> 401
+GET {{base}}/users/me
+
+### Update my profile (role is ignored)
+PATCH {{base}}/users/me
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{ "name": "Alice Smith", "interests": ["chess", "hiking"], "role": "admin" }
+
+### Create a note (named, so later requests can reuse its id)
+# @name createNote
+POST {{base}}/notes
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{ "title": "Shopping list", "content": "milk, eggs" }
+
+### My notes, page 1 (newest first)
+GET {{base}}/notes?page=1&limit=5
+Authorization: Bearer {{login.response.body.$.token}}
+
+### One note
+GET {{base}}/notes/{{createNote.response.body.$.note._id}}
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Update a note
+PATCH {{base}}/notes/{{createNote.response.body.$.note._id}}
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{ "content": "milk, eggs, bread" }
+
+### Malformed id -> 400
+GET {{base}}/notes/abc
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Delete a note -> 204
+DELETE {{base}}/notes/{{createNote.response.body.$.note._id}}
+Authorization: Bearer {{login.response.body.$.token}}
+
+# ---------------- Posts ----------------
+
+### Create a post
+POST {{base}}/posts
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{ "title": "Hello world", "content": "My first post" }
+
+### Posts feed (everyone's posts, newest first, with author name)
+GET {{base}}/posts?page=1&limit=10
+Authorization: Bearer {{login.response.body.$.token}}
+
+# ---------------- Aggregations ----------------
+
+### Scenario 1: users grouped by interest (one aggregate call), paginated
+GET {{base}}/users/by-interest?page=1&limit=10
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Scenario 1, filtered to one interest (uses the interests_1 index)
+GET {{base}}/users/by-interest?interest=Chess
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Scenario 2: one user's posts with $lookup (here: the logged-in user's own)
+GET {{base}}/users/{{login.response.body.$.user._id}}/posts?page=1&limit=5
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Scenario 2 with an unknown user -> 404
+GET {{base}}/users/507f1f77bcf86cd799439011/posts
+Authorization: Bearer {{login.response.body.$.token}}
+
+# ---------------- Admin (log in as an admin first) ----------------
+
+### Admin login (the admin from .env, created by the seed script in Phase 11)
+# REST Client reads these two values from your .env, so no password is stored in this file
+# @name adminLogin
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{ "email": "{{$dotenv ADMIN_EMAIL}}", "password": "{{$dotenv ADMIN_PASSWORD}}" }
+
+### A normal user calling an admin route -> 403
+GET {{base}}/admin/users
+Authorization: Bearer {{login.response.body.$.token}}
+
+### All users (paginated, newest first, no passwords)
+GET {{base}}/admin/users?page=1&limit=10
+Authorization: Bearer {{adminLogin.response.body.$.token}}
+
+### Create a user (admins may set the role)
+# @name adminCreateUser
+POST {{base}}/admin/users
+Authorization: Bearer {{adminLogin.response.body.$.token}}
+Content-Type: application/json
+
+{ "name": "Carol", "email": "carol@example.com", "password": "password123", "role": "user", "interests": ["music"] }
+
+### One user
+GET {{base}}/admin/users/{{adminCreateUser.response.body.$.user._id}}
+Authorization: Bearer {{adminLogin.response.body.$.token}}
+
+### Update a user (role, password, ...)
+PATCH {{base}}/admin/users/{{adminCreateUser.response.body.$.user._id}}
+Authorization: Bearer {{adminLogin.response.body.$.token}}
+Content-Type: application/json
+
+{ "role": "admin" }
+
+### Delete a user (also deletes their notes and posts) -> 204
+DELETE {{base}}/admin/users/{{adminCreateUser.response.body.$.user._id}}
+Authorization: Bearer {{adminLogin.response.body.$.token}}
+
+### Everyone's notes, with owner name and email (read-only)
+GET {{base}}/admin/notes?page=1&limit=10
+Authorization: Bearer {{adminLogin.response.body.$.token}}
