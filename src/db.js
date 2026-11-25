@@ -1,5 +1,10 @@
 import mongoose from "mongoose";
 
+// Build indexes automatically in development only. In production (Vercel sets
+// NODE_ENV=production) every cold start would otherwise send createIndex calls;
+// there the indexes are built once by `npm run seed` (syncIndexes).
+mongoose.set("autoIndex", process.env.NODE_ENV !== "production");
+
 let connecting = null;
 
 // Opens the MongoDB connection once and reuses it afterwards.

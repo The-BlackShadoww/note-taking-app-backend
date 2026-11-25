@@ -66,7 +66,7 @@ const checks = {
         User.aggregate(
             usersByInterestPipeline({ interest: "chess", skip: 0, limit: 10 }),
         ).explain("executionStats"),
-    "Scenario 1 (all groups): full scan expected": () =>
+    "Scenario 1 (all groups)": () =>
         User.aggregate(
             usersByInterestPipeline({ interest: "", skip: 0, limit: 10 }),
         ).explain("executionStats"),
